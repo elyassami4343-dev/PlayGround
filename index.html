@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0810">
+<meta name="description" content="Vault of Embers — a turn-based pixel-art roguelike. Descend eight floors of the ember-lit dark and claim the Sunstone.">
+<title>Vault of Embers — a 2D roguelike</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230a0810'/%3E%3Cpath d='M8 2l4 6-4 6-4-6z' fill='%23f0b35a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="Vault of Embers game view"></canvas>
+  <div id="vignette" class="fx"></div>
+  <div id="grain" class="fx"></div>
+  <div id="lowhp" class="fx"></div>
+  <div id="hurt-flash" class="fx"></div>
+
+  <header id="hud">
+    <div class="hud-left">
+      <div class="depth-block">
+        <div class="depth-line"><span class="minor">DEPTH</span><span id="depth">01</span><span class="minor">/ 08</span></div>
+        <div class="floor-name" id="floor-name">Collapsed Halls</div>
+      </div>
+      <div class="vitals">
+        <div class="vital-row">
+          <span class="minor">VIGOR</span>
+          <span id="hp-text" class="vital-num">30 / 30</span>
+        </div>
+        <div class="bar hp"><i id="hp-fill"></i></div>
+        <div class="bar xp"><i id="xp-fill"></i></div>
+        <div class="loadout">
+          <span id="atk">ATK 4</span><span class="dot">·</span>
+          <span id="def">DEF 1</span><span class="dot">·</span>
+          <span id="level">LV 1</span><span class="dot">·</span>
+          <span id="equip" class="equip">Rusty Blade</span>
+        </div>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="chip" title="Gold">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5l3 4.5-3 4.5-3-4.5z" fill="currentColor" opacity=".85"/></svg>
+        <b id="gold">0</b>
+      </div>
+      <button class="chip chip-btn" id="potion-btn" title="Drink a potion (H)" aria-label="Drink potion">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3h4v3l2.4 3.2a5 5 0 11-8.8 0L8 6z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6.6 12.2a4 4 0 006.8 0z" fill="currentColor" opacity=".9"/></svg>
+        <b id="potions">1</b><em>H</em>
+      </button>
+      <button class="chip chip-btn" id="rune-btn" title="Burn a rune (F)" aria-label="Use flame rune">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.5 2.5c.6 3-2.7 4.1-2.7 6.6 0 1.2.8 2 1.7 2 1.1 0 1.7-.9 1.7-2 1.8 1.2 2.9 3 2.9 4.8A4.9 4.9 0 015 14c0-3.6 3.7-6 5.5-11.5z" fill="currentColor"/></svg>
+        <b id="runes">0</b><em>F</em>
+      </button>
+      <button class="icon-btn" id="mute-btn" title="Toggle sound (M)" aria-label="Toggle sound">
+        <svg viewBox="0 0 20 20" aria-hidden="true" class="snd-on"><path d="M4 7h3l4-3v12l-4-3H4z" fill="currentColor"/><path d="M14 7.2a4 4 0 010 5.6M16 5a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 20 20" aria-hidden="true" class="snd-off"><path d="M4 7h3l4-3v12l-4-3H4z" fill="currentColor"/><path d="M14 8l4 4m0-4l-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section id="log" aria-live="polite">
+    <div class="log-title"><span>CHRONICLE</span><i></i></div>
+    <div id="log-lines"></div>
+  </section>
+
+  <div id="stair-hint" class="hidden"><span class="key">ENTER</span> descend</div>
+
+  <aside id="minimap-wrap">
+    <div class="map-title"><span>THE VAULT</span><b id="map-depth">I</b></div>
+    <canvas id="minimap" width="180" height="116"></canvas>
+  </aside>
+
+  <div id="hintbar">
+    <span><b>WASD</b> move / strike</span>
+    <span><b>H</b> potion</span>
+    <span><b>F</b> rune</span>
+    <span><b>ENTER</b> stairs / wait</span>
+    <span><b>M</b> sound</span>
+  </div>
+
+  <div id="touch-controls">
+    <div class="dpad" role="group" aria-label="Movement">
+      <button class="dpad-btn up" data-move="0,-1" aria-label="Move up">▲</button>
+      <button class="dpad-btn left" data-move="-1,0" aria-label="Move left">◀</button>
+      <div class="dpad-hub"></div>
+      <button class="dpad-btn right" data-move="1,0" aria-label="Move right">▶</button>
+      <button class="dpad-btn down" data-move="0,1" aria-label="Move down">▼</button>
+    </div>
+    <div class="touch-actions">
+      <button id="t-potion" class="touch-btn">POTION <b id="t-potions">1</b></button>
+      <button id="t-rune" class="touch-btn">RUNE <b id="t-runes">0</b></button>
+      <button id="t-act" class="touch-btn wide">WAIT</button>
+    </div>
+  </div>
+
+  <div id="title-screen" class="overlay">
+    <div class="overlay-glow"></div>
+    <div class="title-inner">
+      <p class="eyebrow">A TURN-BASED DUNGEON CRAWL</p>
+      <h1>VAULT <span>of</span><br>EMBERS</h1>
+      <p class="tagline">Eight floors beneath the mountain. One Sunstone at the bottom.<br>The dark is patient. You are not.</p>
+      <div class="title-cta">
+        <button id="play-btn" class="btn-primary">Play</button>
+        <div class="best-line">DEEPEST DESCENT <b id="best-depth">—</b></div>
+      </div>
+      <div class="controls">
+        <div><span class="kbd-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span> move &amp; bump-attack</div>
+        <div><span class="kbd-group"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span> or arrows</div>
+        <div><span class="kbd-group"><kbd>H</kbd></span> drink potion &nbsp;·&nbsp; <span class="kbd-group"><kbd>F</kbd></span> flame rune</div>
+        <div><span class="kbd-group"><kbd>Enter</kbd></span> descend stairs / wait</div>
+      </div>
+      <p class="footnote">Every run is generated anew. Death is permanent. Touch controls appear on phones.</p>
+    </div>
+  </div>
+
+  <div id="death-screen" class="overlay end hidden">
+    <div class="end-inner">
+      <p class="eyebrow red">THE DARK TAKES YOU</p>
+      <h2>YOU DIED</h2>
+      <p id="death-line" class="end-line">The Vault keeps what it kills.</p>
+      <div class="stat-grid" id="death-stats"></div>
+      <button id="retry-btn" class="btn-primary">Descend Again</button>
+      <p class="footnote">press <kbd>R</kbd> to begin a new run</p>
+    </div>
+  </div>
+
+  <div id="win-screen" class="overlay end hidden">
+    <div class="end-inner win">
+      <p class="eyebrow gold">THE SUNSTONE BURNS IN YOUR HAND</p>
+      <h2>ESCAPED</h2>
+      <p id="win-line" class="end-line">Dawn is a rumour no longer.</p>
+      <div class="stat-grid" id="win-stats"></div>
+      <button id="again-btn" class="btn-primary">Play Again</button>
+      <p class="footnote">press <kbd>R</kbd> to begin a new run</p>
+    </div>
+  </div>
+</div>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
